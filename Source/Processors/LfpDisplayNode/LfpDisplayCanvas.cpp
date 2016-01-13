@@ -95,7 +95,6 @@ LfpDisplayCanvas::LfpDisplayCanvas(LfpDisplayNode* processor_) :
     addAndMakeVisible(tbut);
     typeButtons.add(tbut);
     
-
     //Ranges for AUX/accelerometer data
     voltageRanges[AUX_CHANNEL].add("25");
     voltageRanges[AUX_CHANNEL].add("50");
@@ -106,11 +105,11 @@ LfpDisplayCanvas::LfpDisplayCanvas(LfpDisplayNode* processor_) :
     voltageRanges[AUX_CHANNEL].add("750");
     voltageRanges[AUX_CHANNEL].add("1000");
     voltageRanges[AUX_CHANNEL].add("2000");
-    voltageRanges[AUX_CHANNEL].add("5000");
-    selectedVoltageRange[AUX_CHANNEL] = 6;
-    rangeGain[AUX_CHANNEL] = 1; //uV
+    //voltageRanges[AUX_CHANNEL].add("5000");
+    selectedVoltageRange[AUX_CHANNEL] = 9;
+    rangeGain[AUX_CHANNEL] = 0.001; //mV
     rangeSteps[AUX_CHANNEL] = 10;
-    rangeUnits.add("uV");
+    rangeUnits.add("mV");
     typeNames.add("AUX");
 
     tbut = new UtilityButton("AUX",Font("Small Text", 9, Font::plain));
@@ -246,11 +245,14 @@ LfpDisplayCanvas::LfpDisplayCanvas(LfpDisplayNode* processor_) :
     lfpDisplay->setNumChannels(nChans);
     lfpDisplay->setRange(voltageRanges[HEADSTAGE_CHANNEL][selectedVoltageRange[HEADSTAGE_CHANNEL]-1].getFloatValue()*rangeGain[HEADSTAGE_CHANNEL]
         ,HEADSTAGE_CHANNEL);
+	lfpDisplay->setRange(voltageRanges[ADC_CHANNEL][selectedVoltageRange[ADC_CHANNEL] - 1].getFloatValue()*rangeGain[ADC_CHANNEL]
+		, ADC_CHANNEL);
+	lfpDisplay->setRange(voltageRanges[AUX_CHANNEL][selectedVoltageRange[AUX_CHANNEL] - 1].getFloatValue()*rangeGain[AUX_CHANNEL]
+		, AUX_CHANNEL);
 
     // add event display-specific controls (currently just an enable/disable button)
     for (int i = 0; i < 8; i++)
     {
-
 
         EventDisplayInterface* eventOptions = new EventDisplayInterface(lfpDisplay, this, i);
         eventDisplayInterfaces.add(eventOptions);
@@ -343,16 +345,23 @@ void LfpDisplayCanvas::update()
 
     for (int i = 0; i <= nChans; i++) // extra channel for events
     {
-        if (i < nChans)
-            sampleRate.add(processor->channels[i]->sampleRate);
-        else
-            sampleRate.add(processor->channels[i-1]->sampleRate); // for event channel (IT'S A HACK -- BE CAREFUL!)
+		if (processor->getNumInputs() > 0)
+		{
+			if (i < nChans)
+				sampleRate.add(processor->channels[i]->sampleRate);
+			else
+				sampleRate.add(processor->channels[i - 1]->sampleRate); // for event channel (IT'S A HACK -- BE CAREFUL!)
+		}
+		else
+			sampleRate.add(30000);
         
        // std::cout << "Sample rate for ch " << i << " = " << sampleRate[i] << std::endl; 
         displayBufferIndex.add(0);
         screenBufferIndex.add(0);
         lastScreenBufferIndex.add(0);
     }
+
+
 
     if (nChans != lfpDisplay->getNumChannels())
     {
@@ -573,17 +582,7 @@ int LfpDisplayCanvas::getChannelHeight()
 
 void LfpDisplayCanvas::setParameter(int param, float val)
 {
-    // if (param == 0)
-    // {
-    //     timebase = val;
-    //     refreshScreenBuffer();
-    // }
-    // else
-    // {
-    //     displayGain = val; //* 0.0001f;
-    // }
-
-    // repaint();
+    // not used for anything, since LfpDisplayCanvas is not a processor
 }
 
 void LfpDisplayCanvas:: setRangeSelection(float range, bool canvasMustUpdate)
@@ -667,6 +666,8 @@ void LfpDisplayCanvas::updateScreenBuffer()
 
     // copy new samples from the displayBuffer into the screenBuffer
     int maxSamples = lfpDisplay->getWidth() - leftmargin;
+
+	ScopedLock displayLock(*processor->getMutex());
 
     for (int channel = 0; channel <= nChans; channel++) // pull one extra channel for event display
     {
@@ -1038,7 +1039,10 @@ void LfpDisplayCanvas::loadVisualizerParameters(XmlElement* xml)
 
 ChannelType LfpDisplayCanvas::getChannelType(int n)
 {
-    return processor->channels[n]->getType();
+	if (n < processor->getNumInputs())
+		return processor->channels[n]->getType();
+	else
+		return HEADSTAGE_CHANNEL;
 }
 
 ChannelType LfpDisplayCanvas::getSelectedType()
@@ -1120,7 +1124,7 @@ void LfpTimescale::setTimebase(float t)
     {
         String labelString = String(timebase/10.0f*1000.0f*i);
 
-        labels.add(labelString.substring(0,4));
+        labels.add(labelString.substring(0,6));
     }
 
     repaint();
@@ -1232,6 +1236,8 @@ void LfpDisplay::setNumChannels(int numChannels)
         addAndMakeVisible(lfpInfo);
 
         channelInfo.add(lfpInfo);
+
+		savedChannelState.add(true);
 
         totalHeight += lfpChan->getChannelHeight();
 
@@ -1365,6 +1371,7 @@ int LfpDisplay::getRange(ChannelType type)
         if (channels[i]->getType() == type)
             return channels[i]->getRange();
     }
+    return 0;
 }
 
 
@@ -1384,7 +1391,7 @@ void LfpDisplay::setChannelHeight(int r, bool resetSingle)
         singleChan = -1;
         for (int n = 0; n < numChans; n++)
         {
-            channelInfo[n]->setEnabledState(true);
+			channelInfo[n]->setEnabledState(savedChannelState[n]);
         }
     }
 
@@ -1505,12 +1512,14 @@ void LfpDisplay::toggleSingleChannel(int chan)
     {
         singleChan = chan;
         int newHeight = viewport->getHeight();
+		channelInfo[chan]->setEnabledState(true);
         setChannelHeight(newHeight, false);
         setSize(getWidth(), numChans*getChannelHeight());
         viewport->setScrollBarsShown(false,false);
         viewport->setViewPosition(Point<int>(0,chan*newHeight));
         for (int n = 0; n < numChans; n++)
         {
+			savedChannelState.set(n, channels[n]->getEnabledState());
             if (n != chan) channelInfo[n]->setEnabledState(false);
         }
 
@@ -1537,7 +1546,7 @@ void LfpDisplay::mouseDown(const MouseEvent& event)
     int dist = 0;
     int mindist = 10000;
     int closest = 5;
-    for (int n = 0; n < numChans; n++) // select closest instead of relying ot eventComponent
+    for (int n = 0; n < numChans; n++) // select closest instead of relying on eventComponent
     {
         channels[n]->deselect();
 
@@ -1546,21 +1555,25 @@ void LfpDisplay::mouseDown(const MouseEvent& event)
 
         //std::cout << "Mouse down at " << y << " pos is "<< cpos << "n:" << n << "  dist " << dist << std::endl;
 
-        if (dist<mindist)
+        if (dist < mindist)
         {
             mindist = dist-1;
             closest = n;
         }
     }
 
-    //LfpChannelDisplay* lcd = (LfpChannelDisplay*) event.eventComponent;
-    //lcd->select();
-
     channels[closest]->select();
     canvas->setSelectedType(channels[closest]->getType());
 
     if (event.getNumberOfClicks() == 2)
         toggleSingleChannel(closest);
+
+    if (event.mods.isRightButtonDown())
+    {
+        PopupMenu channelMenu = channels[closest]->getOptions();
+        const int result = channelMenu.show();
+        channels[closest]->changeParameter(result);
+    }
 
     canvas->fullredraw = true;//issue full redraw
 
@@ -1791,7 +1804,7 @@ void LfpChannelDisplay::paint(Graphics& g)
                 // // pixel wise line plot has no anti-aliasing, but runs much faster
                 double a = (canvas->getYCoordMax(chan, i)/range*channelHeightFloat)+getHeight()/2;
                 double b = (canvas->getYCoordMin(chan, i)/range*channelHeightFloat)+getHeight()/2;
-                double m = (canvas->getYCoordMean(chan, i)/range*channelHeightFloat)+getHeight()/2;
+                //double m = (canvas->getYCoordMean(chan, i)/range*channelHeightFloat)+getHeight()/2;
                 if (a<b)
                 {
                     from = (a);
@@ -1845,9 +1858,25 @@ void LfpChannelDisplay::paint(Graphics& g)
 }
 
 
+PopupMenu LfpChannelDisplay::getOptions()
+{
 
+    PopupMenu menu;
+    menu.addItem(1, "Invert signal", true, inputInverted);
 
+    return menu;
+}
 
+void LfpChannelDisplay::changeParameter(int id)
+{
+    switch (id)
+    {
+        case 1:
+            setInputInverted(!inputInverted);
+        default:
+            break;
+    }
+}
 
 void LfpChannelDisplay::setRange(float r)
 {
@@ -1980,7 +2009,7 @@ void LfpChannelDisplayInfo::buttonClicked(Button* button)
 
     display->setEnabledState(state, chan);
 
-    UtilityButton* b = (UtilityButton*) button;
+    //UtilityButton* b = (UtilityButton*) button;
 
     // if (state)
     // {

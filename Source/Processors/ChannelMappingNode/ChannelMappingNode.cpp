@@ -64,7 +64,6 @@ AudioProcessorEditor* ChannelMappingNode::createEditor()
 
 void ChannelMappingNode::updateSettings()
 {
-    int j;
     if (getNumInputs() > 0)
         channelBuffer.setSize(getNumInputs(), 10000);
 
@@ -73,21 +72,27 @@ void ChannelMappingNode::updateSettings()
 	    OwnedArray<Channel> oldChannels;
 		oldChannels.swapWith(channels);
 	    channels.clear();
+		Array<bool> recordStates;
 
 	    settings.numOutputs = 0;
 
 	    for (int i = 0; i < getNumInputs(); i++)
 	    {
-	        if (enabledChannelArray[channelArray[i]])
+			if ((enabledChannelArray[channelArray[i]]) && (channelArray[i] < oldChannels.size()))
 	        {
+				oldChannels[channelArray[i]]->mappedIndex = settings.numOutputs;
 	            channels.add(oldChannels[channelArray[i]]);
-				oldChannels.set(channelArray[i],nullptr,false);
+				recordStates.add(oldChannels[i]->getRecordState());
 	            settings.numOutputs++;
 	        }
 
 	    }
+		oldChannels.clearQuick(false);
+		for (int i = 0; i < settings.numOutputs; i++)
+		{
+			channels[i]->setRecordState(recordStates[i]);
+		}
 	}
-
 }
 
 
@@ -100,7 +105,7 @@ void ChannelMappingNode::setParameter(int parameterIndex, float newValue)
     }
     else if (parameterIndex == 2)
     {
-        referenceChannels.set((int) newValue, currentChannel);
+		referenceChannels.set((int)newValue, currentChannel);
     }
     else if (parameterIndex == 3)
     {
@@ -127,7 +132,7 @@ void ChannelMappingNode::process(AudioSampleBuffer& buffer,
     // use copy constructor to set the data to refer to
     channelBuffer = buffer;
 
-    buffer.clear();
+   // buffer.clear();
 
     while (j < settings.numOutputs)
     {
@@ -135,11 +140,9 @@ void ChannelMappingNode::process(AudioSampleBuffer& buffer,
         if ((realChan < channelBuffer.getNumChannels()) && (enabledChannelArray[realChan]))
         {
             // copy it back into the buffer according to the channel mapping
-            buffer.addFrom(j, // destChannel
+            buffer.copyFrom(j, // destChannel
                            0, // destStartSample
-                           channelBuffer, // source
-                           realChan, // sourceChannel
-                           0, // sourceStartSample
+                           channelBuffer.getReadPointer(realChan), // source
                            getNumSamples(j), // numSamples
                            1.0f // gain to apply to source (positive for original signal)
                           );
@@ -151,7 +154,7 @@ void ChannelMappingNode::process(AudioSampleBuffer& buffer,
                 buffer.addFrom(j, // destChannel
                                0, // destStartSample
                                channelBuffer, // source
-                               referenceChannels[referenceArray[realChan]], // sourceChannel
+							   channels[referenceChannels[referenceArray[realChan]]]->index-1, // sourceChannel
                                0, // sourceStartSample
                                getNumSamples(j), // numSamples
                                -1.0f // gain to apply to source (negative for reference)

@@ -58,6 +58,7 @@ public:
     uint64 buf_timestamp64;
     unsigned long int_buf_size;
     DataFormat data_format;
+    unsigned long sampletime_80mhz;
 };
 
 static const char bits_port0[16] = { 23, 22, -1, 14, 11, -1, -1, 28, 12, 10, 27, 26, -1, -1, -1, -1 };
@@ -103,7 +104,7 @@ static std::vector<std::wstring> SafeArrayToVecStr(SAFEARRAY* sa)
 
     if (SafeArrayGetElemsize(sa) != sizeof(BSTR*))
         _com_raise_error(E_FAIL);
-    if(SafeArrayGetDim(sa)!=1)
+    if (SafeArrayGetDim(sa)!=1)
         _com_raise_error(E_FAIL);
     if (FAILED(hr = SafeArrayGetLBound(sa, 1, &lbound)))
         _com_raise_error(hr);
@@ -158,7 +159,7 @@ std::vector<std::wstring> GetEcubeModuleChannels(IEcubeModulePtr& mp)
 {
     std::vector<std::wstring> chnames;
     {
-        SAFEARRAY *sa = mp->GetChannels();
+        SAFEARRAY* sa = mp->GetChannels();
         chnames = SafeArrayToVecStr(sa);
         SafeArrayDestroy(sa); // ARTEM - Leaks a safearray if an exception is thrown here
     }
@@ -178,7 +179,7 @@ EcubeThread::EcubeThread(SourceNode* sn) : DataThread(sn), numberingScheme(1), a
         pDevInt = new EcubeDevInt;
         pDevInt->pEcube.CreateInstance(__uuidof(Ecube));
         {
-            SAFEARRAY *sa = pDevInt->pEcube->DetectNetworkDevices();
+            SAFEARRAY* sa = pDevInt->pEcube->DetectNetworkDevices();
             StringArray a(SafeArrayToStringArray(sa)); // ARTEM - Leaks a safearray if an exception is thrown here
             SafeArrayDestroy(sa);
             component.SetDeviceNames(a);
@@ -197,7 +198,8 @@ EcubeThread::EcubeThread(SourceNode* sn) : DataThread(sn), numberingScheme(1), a
             String selmod = component.GetModuleName();
             if (selmod == "Headstage(s)")
             {
-                m_samplerate = 25000.0f;
+                m_samplerate = 25000.0;
+                pDevInt->sampletime_80mhz = 3200;
                 pDevInt->data_format = EcubeDevInt::dfSeparateChannelsAnalog;
                 // Get status of headstage selection
                 bool selhs[10];
@@ -233,7 +235,6 @@ EcubeThread::EcubeThread(SourceNode* sn) : DataThread(sn), numberingScheme(1), a
             else if (selmod == "Panel Analog Input")
             {
                 pDevInt->pModule = pDevInt->pDevice->OpenModule(_bstr_t(L"PanelAnalogInput"));
-                m_samplerate = 25000.0f;// 40.0e6 / 572 original samplerate;
                 pDevInt->data_format = EcubeDevInt::dfInterleavedChannelsAnalog;
                 bool acq_created = false;
                 std::vector<std::wstring> chnames = GetEcubeModuleChannels(pDevInt->pModule);
@@ -250,6 +251,12 @@ EcubeThread::EcubeThread(SourceNode* sn) : DataThread(sn), numberingScheme(1), a
                     pDevInt->chid_map[pch->GetID()] = pDevInt->n_channel_objects;
                     pDevInt->n_channel_objects++;
                 }
+                m_samplerate = component.GetSampleRate(); // Initial user-specified sample rate
+                pDevInt->pStrmA->PutSampleRate(m_samplerate);
+                m_samplerate = pDevInt->pStrmA->GetSampleRate(); // Retrieve the coerced value from the API
+                pDevInt->sampletime_80mhz = pDevInt->pStrmA->GetSampleRateDen();
+                pDevInt->sampletime_80mhz *= 80000000 / pDevInt->pStrmA->GetSampleRateNum();
+
                 dataBuffer = new DataBuffer(32, 10000);
                 // The interleaving buffer is there just for short->float conversion
                 pDevInt->interleaving_buffer.malloc(sizeof(float)* 1500);
@@ -257,7 +264,8 @@ EcubeThread::EcubeThread(SourceNode* sn) : DataThread(sn), numberingScheme(1), a
             else if (selmod == "Panel Digital Input")
             {
                 pDevInt->pModule = pDevInt->pDevice->OpenModule(_bstr_t(L"PanelDigitalIO"));
-                m_samplerate = 25000.0f;
+                m_samplerate = 25000.0;
+                pDevInt->sampletime_80mhz = 3200;
                 pDevInt->data_format = EcubeDevInt::dfDigital;
 
                 bool acq_created = false;
@@ -290,7 +298,7 @@ EcubeThread::EcubeThread(SourceNode* sn) : DataThread(sn), numberingScheme(1), a
 
         pDevInt->buf_timestamp_locked = false;
 
-        setDefaultChannelNamesAndType();
+        setDefaultChannelNames();
 
     }
     catch (_com_error& e)
@@ -300,24 +308,11 @@ EcubeThread::EcubeThread(SourceNode* sn) : DataThread(sn), numberingScheme(1), a
     }
 }
 
-void EcubeThread::getChannelsInfo(StringArray &Names_, Array<ChannelType> &type_, Array<int> &stream_, Array<int> &originalChannelNumber_, Array<float> &gains_)
-{
-    Names_ = Names;
-    type_ = type;
-    stream_ = stream;
-    originalChannelNumber_ = originalChannelNumber;
-    gains_ = gains;
-}
-
 /* This will give default names & gains to channels, unless they were manually modified by the user
 In that case, the query channelModified, will return the values that need to be put */
-void EcubeThread::setDefaultChannelNamesAndType()
+void EcubeThread::setDefaultChannelNames()
 {
-    Names.clear();
-    type.clear();
-    stream.clear();
-    gains.clear();
-    originalChannelNumber.clear();
+
     String prefix;
     ChannelType common_type;
 
@@ -344,31 +339,23 @@ void EcubeThread::setDefaultChannelNamesAndType()
 
     for (int i = 0; i < numch; i++)
     {
-        Names.add(prefix + String(i));
-        gains.add(getBitVolts(i));
-        type.add(common_type);
-        originalChannelNumber.add(i);
+        ChannelCustomInfo ci;
+        ci.name = prefix + String(i);
+        ci.gain = getBitVolts(i);
+        channelInfo.set(i, ci);
     }
 
-    stream.add(0);
 }
 
-void EcubeThread::updateChannelNames()
+bool EcubeThread::usesCustomNames()
 {
-    setDefaultChannelNamesAndType();
-
-    for (int i = 0; i < sn->channels.size(); i++)
-    {
-        sn->channels[i]->setName(Names[i]);
-        sn->channels[i]->bitVolts = gains[i];
-        sn->channels[i]->setType(type[i]);
-    }
+    return true;
 }
 
 void EcubeThread::setDefaultNamingScheme(int scheme)
 {
     numberingScheme = scheme;
-    setDefaultChannelNamesAndType();
+    setDefaultChannelNames();
 }
 
 
@@ -403,7 +390,7 @@ int EcubeThread::getNumAdcOutputs()
 
 int EcubeThread::getNumAuxOutputs()
 {
-	return 0;
+    return 0;
 }
 
 int EcubeThread::getNumChannels()
@@ -424,16 +411,6 @@ int EcubeThread::getNumEventChannels()
         return 0;
 }
 
-int EcubeThread::getNumADCchannels()
-{
-    if (pDevInt->data_format == EcubeDevInt::dfInterleavedChannelsAnalog)
-        return 32;
-    else if(pDevInt->data_format == EcubeDevInt::dfDigital)
-        return 64;
-    else
-        return 0;
-}
-
 float EcubeThread::getSampleRate()
 {
     return m_samplerate;
@@ -441,10 +418,10 @@ float EcubeThread::getSampleRate()
 
 float EcubeThread::getBitVolts(int chan)
 {
-	if (pDevInt->data_format == EcubeDevInt::dfInterleavedChannelsAnalog || pDevInt->data_format == EcubeDevInt::dfDigital)
-		return 10.0/32768; // Volts per bit for front panel analog input and fictive v/bit for the digital input
-	else
-		return 6.25e3 / 32768; // Microvolts per bit for the headstage channels
+    if (pDevInt->data_format == EcubeDevInt::dfInterleavedChannelsAnalog || pDevInt->data_format == EcubeDevInt::dfDigital)
+        return 10.0/32768; // Volts per bit for front panel analog input and fictive v/bit for the digital input
+    else
+        return 6.25e3 / 32768; // Microvolts per bit for the headstage channels
 }
 
 float EcubeThread::getBitVolts(Channel* chan)
@@ -478,16 +455,17 @@ bool EcubeThread::updateBuffer()
             if (pDevInt->data_format == EcubeDevInt::dfSeparateChannelsAnalog || pDevInt->data_format == EcubeDevInt::dfInterleavedChannelsAnalog)
                 ab = pDevInt->pStrmA->FetchNextBuffer();
             else
-                ab = pDevInt->pStrmD->FetchNextBuffer(); 
+                ab = pDevInt->pStrmD->FetchNextBuffer();
             unsigned long chid = ab->GetStreamID();
             std::map<int, int>::const_iterator chit = pDevInt->chid_map.find(chid);
             if (chit != pDevInt->chid_map.end())
             {
                 unsigned long bts = ab->GetTimestamp();
                 unsigned long datasize = ab->GetDataSize() / 2; // Data size is returned in bytes, not in samples
+
                 if (pDevInt->data_format == EcubeDevInt::dfSeparateChannelsAnalog)
                 {
-                    if (!pDevInt->buf_timestamp_locked || (bts - pDevInt->buf_timestamp >= 3200 && pDevInt->buf_timestamp - bts >= 3200)
+                    if (!pDevInt->buf_timestamp_locked || (bts - pDevInt->buf_timestamp >= pDevInt->sampletime_80mhz && pDevInt->buf_timestamp - bts >= pDevInt->sampletime_80mhz)
                         /*bts != pDevInt->buf_timestamp*/
                         || datasize != pDevInt->int_buf_size)
                     {
@@ -497,7 +475,7 @@ bool EcubeThread::updateBuffer()
                         {
                             // Interleaving buffer is not empty.
                             // Send its contents out to the application
-                            int64 cts = pDevInt->buf_timestamp64 / 3200; // Convert eCube 80MHz timestamp into a 25kHz timestamp
+                            int64 cts = pDevInt->buf_timestamp64 / pDevInt->sampletime_80mhz; // Convert eCube 80MHz timestamp into a 25kHz timestamp
                             for (unsigned long j = 0; j < pDevInt->int_buf_size; j++)
                             {
                                 dataBuffer->addToBuffer(pDevInt->interleaving_buffer + j*nchan, &cts, &eventCode, 1);
@@ -547,7 +525,7 @@ bool EcubeThread::updateBuffer()
                         pDevInt->interleaving_buffer[j] = pData[j] * 10.0/32768; // Convert into volts
                     }
                     unsigned long datasam = datasize / 32;
-                    int64 cts = pDevInt->buf_timestamp64 / 3200; // Convert eCube's 80MHz timestamps into number of samples on the Panel Analog input (orig sample rate 1144)
+                    int64 cts = pDevInt->buf_timestamp64 / pDevInt->sampletime_80mhz; // Convert eCube's 80MHz timestamps into number of samples on the Panel Analog input (orig sample rate 1144)
                     for (unsigned long j = 0; j < datasam; j++)
                     {
                         dataBuffer->addToBuffer(pDevInt->interleaving_buffer+j*32, &cts, &eventCode, 1);
@@ -565,7 +543,7 @@ bool EcubeThread::updateBuffer()
                         {
                             // Interleaving buffer is not empty.
                             // Send its contents out to the application
-                            int64 cts = pDevInt->buf_timestamp64 / 3200; // Convert eCube 80MHz timestamp into a 25kHz timestamp
+                            int64 cts = pDevInt->buf_timestamp64 / pDevInt->sampletime_80mhz; // Convert eCube 80MHz timestamp into a 25kHz timestamp
                             for (unsigned long j = 0; j < pDevInt->int_buf_size; j++)
                             {
                                 dataBuffer->addToBuffer(pDevInt->interleaving_buffer + j*64, &cts, pDevInt->event_buffer+j, 1);
@@ -595,22 +573,22 @@ bool EcubeThread::updateBuffer()
                     const uint32_t* pconvtbl;
                     switch (chid)
                     {
-                    case 0:
-                    case 3:
-                        pbits = bits_port0;
-                        pconvtbl = pDevInt->bit_conversion_tables;
-                        break;
-                    case 1:
-                    case 4:
-                        pbits = bits_port1;
-                        pconvtbl = pDevInt->bit_conversion_tables+0x200;
-                        break;
-                    case 2:
-                    case 5:
-                    default:
-                        pbits = bits_port2;
-                        pconvtbl = pDevInt->bit_conversion_tables + 0x400;
-                        break;
+                        case 0:
+                        case 3:
+                            pbits = bits_port0;
+                            pconvtbl = pDevInt->bit_conversion_tables;
+                            break;
+                        case 1:
+                        case 4:
+                            pbits = bits_port1;
+                            pconvtbl = pDevInt->bit_conversion_tables+0x200;
+                            break;
+                        case 2:
+                        case 5:
+                        default:
+                            pbits = bits_port2;
+                            pconvtbl = pDevInt->bit_conversion_tables + 0x400;
+                            break;
                     }
                     int bitchn_offset = chid >= 3 ? 32 : 0;
                     uint8_t dword_shift = chid>=3 ? 32 : 0;

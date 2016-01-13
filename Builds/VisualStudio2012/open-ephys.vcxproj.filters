@@ -32,6 +32,9 @@
     <Filter Include="open-ephys\Source\Processors">
       <UniqueIdentifier>{3DDEC88C-BAA5-2DDA-A59F-0FB74070AB82}</UniqueIdentifier>
     </Filter>
+    <Filter Include="open-ephys\Source\Processors\Rectifier">
+      <UniqueIdentifier>{1D1CBF65-097A-91AC-3A16-B6BC18264911}</UniqueIdentifier>
+    </Filter>
     <Filter Include="open-ephys\Source\Processors\ArduinoOutput">
       <UniqueIdentifier>{26D17857-B604-0035-CFB5-C3FFD320BD99}</UniqueIdentifier>
     </Filter>
@@ -58,6 +61,9 @@
     </Filter>
     <Filter Include="open-ephys\Source\Processors\Editors">
       <UniqueIdentifier>{E65874A6-23B2-9D76-B12A-15730E2192BC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="open-ephys\Source\Processors\EventBroadcaster">
+      <UniqueIdentifier>{5D8BDC28-D042-498C-5264-B63133EAFE42}</UniqueIdentifier>
     </Filter>
     <Filter Include="open-ephys\Source\Processors\EventDetector">
       <UniqueIdentifier>{FDD5B79A-1AA4-7745-BB6E-E09A6DFC328E}</UniqueIdentifier>
@@ -439,6 +445,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Source\CoreServices.cpp">
+      <Filter>open-ephys\Source</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\AccessClass.cpp">
       <Filter>open-ephys\Source</Filter>
     </ClCompile>
@@ -447,6 +456,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\Audio\AudioComponent.cpp">
       <Filter>open-ephys\Source\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Processors\Rectifier\Rectifier.cpp">
+      <Filter>open-ephys\Source\Processors\Rectifier</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Processors\ArduinoOutput\ArduinoOutput.cpp">
       <Filter>open-ephys\Source\Processors\ArduinoOutput</Filter>
@@ -571,8 +583,11 @@
     <ClCompile Include="..\..\Source\Processors\Editors\NetworkEventsEditor.cpp">
       <Filter>open-ephys\Source\Processors\Editors</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source\Processors\Editors\PeriStimulusTimeHistogramEditor.cpp">
-      <Filter>open-ephys\Source\Processors\Editors</Filter>
+    <ClCompile Include="..\..\Source\Processors\EventBroadcaster\EventBroadcaster.cpp">
+      <Filter>open-ephys\Source\Processors\EventBroadcaster</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Processors\EventBroadcaster\EventBroadcasterEditor.cpp">
+      <Filter>open-ephys\Source\Processors\EventBroadcaster</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Processors\EventDetector\EventDetector.cpp">
       <Filter>open-ephys\Source\Processors\EventDetector</Filter>
@@ -673,6 +688,9 @@
     <ClCompile Include="..\..\Source\Processors\NetworkEvents\NetworkEvents.cpp">
       <Filter>open-ephys\Source\Processors\NetworkEvents</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramEditor.cpp">
+      <Filter>open-ephys\Source\Processors\PSTH</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramNode.cpp">
       <Filter>open-ephys\Source\Processors\PSTH</Filter>
     </ClCompile>
@@ -747,6 +765,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\Processors\Splitter\SplitterEditor.cpp">
       <Filter>open-ephys\Source\Processors\Splitter</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Processors\Visualization\Visualizer.cpp">
+      <Filter>open-ephys\Source\Processors\Visualization</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Processors\Visualization\DataWindow.cpp">
       <Filter>open-ephys\Source\Processors\Visualization</Filter>
@@ -2028,6 +2049,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Source\CoreServices.h">
+      <Filter>open-ephys\Source</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\AccessClass.h">
       <Filter>open-ephys\Source</Filter>
     </ClInclude>
@@ -2036,6 +2060,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\Audio\AudioComponent.h">
       <Filter>open-ephys\Source\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Processors\Rectifier\Rectifier.h">
+      <Filter>open-ephys\Source\Processors\Rectifier</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Processors\ArduinoOutput\ArduinoOutput.h">
       <Filter>open-ephys\Source\Processors\ArduinoOutput</Filter>
@@ -2178,8 +2205,11 @@
     <ClInclude Include="..\..\Source\Processors\Editors\NetworkEventsEditor.h">
       <Filter>open-ephys\Source\Processors\Editors</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source\Processors\Editors\PeriStimulusTimeHistogramEditor.h">
-      <Filter>open-ephys\Source\Processors\Editors</Filter>
+    <ClInclude Include="..\..\Source\Processors\EventBroadcaster\EventBroadcaster.h">
+      <Filter>open-ephys\Source\Processors\EventBroadcaster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Processors\EventBroadcaster\EventBroadcasterEditor.h">
+      <Filter>open-ephys\Source\Processors\EventBroadcaster</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Processors\EventDetector\EventDetector.h">
       <Filter>open-ephys\Source\Processors\EventDetector</Filter>
@@ -2279,6 +2309,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\Processors\NetworkEvents\NetworkEvents.h">
       <Filter>open-ephys\Source\Processors\NetworkEvents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramEditor.h">
+      <Filter>open-ephys\Source\Processors\PSTH</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramNode.h">
       <Filter>open-ephys\Source\Processors\PSTH</Filter>

@@ -26,8 +26,8 @@
 
 #include "../../../JuceLibraryCode/JuceHeader.h"
 #include "../GenericProcessor/GenericProcessor.h"
+#include "../NetworkEvents/NetworkEvents.h"
 #include "RecordControlEditor.h"
-#include "../RecordNode/RecordNode.h"
 
 /**
 
@@ -47,6 +47,7 @@ public:
     void setParameter(int, float);
     void updateTriggerChannel(int newChannel);
     void handleEvent(int eventType, MidiMessage& event, int);
+
     bool enable();
 
     bool isUtility()
@@ -58,9 +59,10 @@ public:
 
 private:
     int triggerChannel;
-
-
-    RecordNode* recordNode;
+    enum Edges { RISING = 0, FALLING = 1 };
+    enum Types {SET = 0, TOGGLE = 1};
+    Edges triggerEdge;
+    Types triggerType;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RecordControl);
 

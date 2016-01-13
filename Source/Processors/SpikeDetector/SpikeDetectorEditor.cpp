@@ -240,7 +240,7 @@ void SpikeDetectorEditor::buttonEvent(Button* button)
         // std::cout << "Plus button pressed!" << std::endl;
         if (acquisitionIsActive)
         {
-            sendActionMessage("Stop acquisition before adding electrodes.");
+            CoreServices::sendStatusMessage("Stop acquisition before adding electrodes.");
             return;
         }
 
@@ -267,13 +267,14 @@ void SpikeDetectorEditor::buttonEvent(Button* button)
         {
             if (!addElectrode(nChans))
             {
-                sendActionMessage("Not enough channels to add electrode.");
+                CoreServices::sendStatusMessage("Not enough channels to add electrode.");
             }
         }
 
         electrodeEditorButtons[1]->setToggleState(false, dontSendNotification);
 
-        getEditorViewport()->makeEditorVisible(this, true, true);
+		CoreServices::updateSignalChain(this);
+		CoreServices::highlightEditor(this);
         return;
 
     }
@@ -366,13 +367,14 @@ void SpikeDetectorEditor::buttonEvent(Button* button)
     {
         if (acquisitionIsActive)
         {
-            sendActionMessage("Stop acquisition before deleting electrodes.");
+            CoreServices::sendStatusMessage("Stop acquisition before deleting electrodes.");
             return;
         }
 
         removeElectrode(electrodeList->getSelectedItemIndex());
 
-        getEditorViewport()->makeEditorVisible(this, true, true);
+		CoreServices::updateSignalChain(this);
+		CoreServices::highlightEditor(this);
 
         return;
     }
@@ -430,11 +432,11 @@ void SpikeDetectorEditor::refreshElectrodeList()
     }
 }
 
-bool SpikeDetectorEditor::addElectrode(int nChans)
+bool SpikeDetectorEditor::addElectrode(int nChans, int electrodeID)
 {
     SpikeDetector* processor = (SpikeDetector*) getProcessor();
 
-    if (processor->addElectrode(nChans))
+    if (processor->addElectrode(nChans, electrodeID))
     {
         refreshElectrodeList();
         return true;
@@ -498,7 +500,7 @@ void SpikeDetectorEditor::labelTextChanged(Label* label)
         electrodeTypes->setText(currentText += "s");
     }
 
-    getEditorViewport()->makeEditorVisible(this, false, true);
+	CoreServices::updateSignalChain(this);
 
 }
 
@@ -541,12 +543,11 @@ void SpikeDetectorEditor::comboBoxChanged(ComboBox* comboBox)
 
 void SpikeDetectorEditor::checkSettings()
 {
-    electrodeList->setSelectedItemIndex(0);
+    electrodeList->setSelectedId(0);
     drawElectrodeButtons(0);
 
-    getEditorViewport()->makeEditorVisible(this, true, true);
-
-
+	CoreServices::updateSignalChain(this);
+	CoreServices::highlightEditor(this);
 
 }
 

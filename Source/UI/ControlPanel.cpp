@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "UIComponent.h"
 #include <stdio.h>
 #include <math.h>
+#include "../AccessClass.h"
 #include "../Processors/RecordNode/RecordEngine.h"
 
 PlayButton::PlayButton()
@@ -488,11 +489,38 @@ void ControlPanel::setRecordState(bool t)
 
 }
 
+bool ControlPanel::getRecordingState()
+{
+
+	return recordButton->getToggleState();
+
+}
+
+void ControlPanel::setRecordingDirectory(String path)
+{
+    File newFile(path);
+    filenameComponent->setCurrentFile(newFile, true, sendNotificationSync);
+
+    graph->getRecordNode()->newDirectoryNeeded = true;
+    masterClock->resetRecordTime();
+}
+
+bool ControlPanel::getAcquisitionState()
+{
+	return playButton->getToggleState();
+}
+
+void ControlPanel::setAcquisitionState(bool state)
+{
+	playButton->setToggleState(state, sendNotification);
+}
+
+
 void ControlPanel::updateChildComponents()
 {
 
-    filenameComponent->addListener(getProcessorGraph()->getRecordNode());
-    getProcessorGraph()->getRecordNode()->filenameComponentChanged(filenameComponent);
+    filenameComponent->addListener(AccessClass::getProcessorGraph()->getRecordNode());
+    AccessClass::getProcessorGraph()->getRecordNode()->filenameComponentChanged(filenameComponent);
     recordSelector->setSelectedId(1,sendNotificationSync);
 
 }
@@ -673,7 +701,7 @@ void ControlPanel::openState(bool os)
 
     cpb->setState(os);
 
-    getUIComponent()->childComponentChanged();
+    AccessClass::getUIComponent()->childComponentChanged();
 }
 
 void ControlPanel::labelTextChanged(Label* label)
@@ -830,7 +858,7 @@ void ControlPanel::comboBoxChanged(ComboBox* combo)
             recordEngines[lastEngineIndex]->toggleConfigWindow();
     }
     RecordEngine* re;
-    getProcessorGraph()->getRecordNode()->clearRecordEngines();
+    AccessClass::getProcessorGraph()->getRecordNode()->clearRecordEngines();
     if (combo->getSelectedId() > 0)
     {
         re = recordEngines[combo->getSelectedId()-1]->instantiateEngine();
@@ -841,9 +869,9 @@ void ControlPanel::comboBoxChanged(ComboBox* combo)
         combo->setSelectedId(1,dontSendNotification);
         re = recordEngines[0]->instantiateEngine();
     }
-    re->setUIComponent(getUIComponent());
+    //re->setUIComponent(getUIComponent());
     re->registerManager(recordEngines[combo->getSelectedId()-1]);
-    getProcessorGraph()->getRecordNode()->registerRecordEngine(re);
+    AccessClass::getProcessorGraph()->getRecordNode()->registerRecordEngine(re);
 
     graph->getRecordNode()->newDirectoryNeeded = true;
     newDirectoryButton->setEnabledState(false);
@@ -940,7 +968,7 @@ void ControlPanel::toggleState()
     open = !open;
 
     cpb->toggleState();
-    getUIComponent()->childComponentChanged();
+    AccessClass::getUIComponent()->childComponentChanged();
 }
 
 String ControlPanel::getTextToAppend()
@@ -971,6 +999,16 @@ String ControlPanel::getTextToPrepend()
     }
 }
 
+void ControlPanel::setPrependText(String t)
+{
+    prependText->setText(t, sendNotificationSync);
+}
+
+void ControlPanel::setAppendText(String t)
+{
+    appendText->setText(t, sendNotificationSync);
+}
+
 void ControlPanel::setDateText(String t)
 {
     dateText->setText(t, dontSendNotification);
@@ -982,6 +1020,7 @@ void ControlPanel::saveStateToXml(XmlElement* xml)
 
     XmlElement* controlPanelState = xml->createNewChildElement("CONTROLPANEL");
     controlPanelState->setAttribute("isOpen",open);
+	controlPanelState->setAttribute("recordPath", filenameComponent->getCurrentFile().getFullPathName());
     controlPanelState->setAttribute("prependText",prependText->getText());
     controlPanelState->setAttribute("appendText",appendText->getText());
     controlPanelState->setAttribute("recordEngine",recordSelector->getSelectedId());
@@ -1006,7 +1045,11 @@ void ControlPanel::loadStateFromXml(XmlElement* xml)
     {
         if (xmlNode->hasTagName("CONTROLPANEL"))
         {
-
+			String recordPath = xmlNode->getStringAttribute("recordPath", String::empty);
+			if (!recordPath.isEmpty())
+			{
+				filenameComponent->setCurrentFile(File(recordPath), true, sendNotificationAsync);
+			}
             appendText->setText(xmlNode->getStringAttribute("appendText", ""), dontSendNotification);
             prependText->setText(xmlNode->getStringAttribute("prependText", ""), dontSendNotification);
             recordSelector->setSelectedId(xmlNode->getIntAttribute("recordEngine",1), sendNotificationSync);

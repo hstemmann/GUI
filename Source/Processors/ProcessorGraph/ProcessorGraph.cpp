@@ -30,6 +30,7 @@
 #include "../LfpDisplayNode/LfpDisplayNode.h"
 #include "../SpikeDisplayNode/SpikeDisplayNode.h"
 #include "../EventNode/EventNode.h"
+#include "../EventBroadcaster/EventBroadcaster.h"
 #include "../FilterNode/FilterNode.h"
 #include "../RecordNode/RecordNode.h"
 #include "../ResamplingNode/ResamplingNode.h"
@@ -53,24 +54,12 @@
 #include "../NetworkEvents/NetworkEvents.h"
 #include "../PSTH/PeriStimulusTimeHistogramNode.h"
 #include "../CAR/CAR.h"
+#include "../Rectifier/Rectifier.h"
 
-
-#ifdef ZEROMQ 
     
-#ifdef WIN32
-    #pragma comment( lib, "../../Resources/windows-libs/ZeroMQ/lib_x64/libzmq-v120-mt-4_0_4.lib" )
-    #include "../../Resources/windows-libs/ZeroMQ/include/zmq.h"
-    #include "../../Resources/windows-libs/ZeroMQ/include/zmq_utils.h"
-#else
-    #include <zmq.h>
-#endif
-
-#endif
-
 ProcessorGraph::ProcessorGraph() : currentNodeId(100)
 {
 
-	createZmqContext();
     // The ProcessorGraph will always have 0 inputs (all content is generated within graph)
     // but it will have N outputs, where N is the number of channels for the audio monitor
     setPlayConfigDetails(0, // number of inputs
@@ -85,14 +74,6 @@ ProcessorGraph::~ProcessorGraph()
 
 }
 
-void* ProcessorGraph::createZmqContext()
-{
-#ifdef ZEROMQ 
-	zmqcontext =  zmq_ctx_new (); //<-- this is only available in version 3+
-	return zmqcontext;
-#endif
-	return nullptr;
-}
 void ProcessorGraph::createDefaultNodes()
 {
 
@@ -121,10 +102,7 @@ void ProcessorGraph::createDefaultNodes()
 
 void ProcessorGraph::updatePointers()
 {
-    getAudioNode()->setUIComponent(getUIComponent());
     getAudioNode()->updateBufferSize();
-    getRecordNode()->setUIComponent(getUIComponent());
-    getMessageCenter()->setUIComponent(getUIComponent());
 }
 
 void* ProcessorGraph::createNewProcessor(String& description, int id)//,
@@ -151,8 +129,6 @@ void* ProcessorGraph::createNewProcessor(String& description, int id)//,
         std::cout << std::endl;
         std::cout << std::endl;
 
-        processor->setUIComponent(getUIComponent()); // give access to important pointers
-
         addNode(processor,id); // have to add it so it can be deleted by the graph
 
 		if (processor->isSource())
@@ -175,7 +151,7 @@ void* ProcessorGraph::createNewProcessor(String& description, int id)//,
     else
     {
 
-        sendActionMessage("Not a valid processor type.");
+        CoreServices::sendStatusMessage("Not a valid processor type.");
 
         return 0;
     }
@@ -438,26 +414,41 @@ void ProcessorGraph::connectProcessors(GenericProcessor* source, GenericProcesso
     std::cout << "     Connecting " << source->getName() << " " << source->getNodeId(); //" channel ";
     std::cout << " to " << dest->getName() << " " << dest->getNodeId() << std::endl;
 
-    // 1. connect continuous channels
-    for (int chan = 0; chan < source->getNumOutputs(); chan++)
-    {
-        //std::cout << chan << " ";
+    bool connectContinuous = true;
+    bool connectEvents = true;
 
-        addConnection(source->getNodeId(),         // sourceNodeID
-                      chan,                        // sourceNodeChannelIndex
-                      dest->getNodeId(),           // destNodeID
-                      dest->getNextChannel(true)); // destNodeChannelIndex
+    if (source->getDestNode() != nullptr)
+    {
+        if (source->getDestNode()->isMerger())
+        {
+            Merger* merger = (Merger*) source->getDestNode();
+            connectContinuous = merger->sendContinuousForSource(source);
+            connectEvents = merger->sendEventsForSource(source);
+        }
     }
 
-    // std::cout << "     Connecting " << source->getName() <<
-    //           " event channel to " <<
-    //           dest->getName() << std::endl;
+    // 1. connect continuous channels
+    if (connectContinuous)
+    {
+        for (int chan = 0; chan < source->getNumOutputs(); chan++)
+        {
+            //std::cout << chan << " ";
+
+            addConnection(source->getNodeId(),         // sourceNodeID
+                          chan,                        // sourceNodeChannelIndex
+                          dest->getNodeId(),           // destNodeID
+                          dest->getNextChannel(true)); // destNodeChannelIndex
+        }
+    }
 
     // 2. connect event channel
-    addConnection(source->getNodeId(),    // sourceNodeID
-                  midiChannelIndex,       // sourceNodeChannelIndex
-                  dest->getNodeId(),      // destNodeID
-                  midiChannelIndex);      // destNodeChannelIndex
+    if (connectEvents)
+    {
+        addConnection(source->getNodeId(),    // sourceNodeID
+                      midiChannelIndex,       // sourceNodeChannelIndex
+                      dest->getNodeId(),      // destNodeID
+                      midiChannelIndex);      // destNodeChannelIndex
+    }
 
 }
 
@@ -562,13 +553,13 @@ GenericProcessor* ProcessorGraph::createProcessorFromDescription(String& descrip
 		}
 		else if (subProcessorType.equalsIgnoreCase("Network Events"))
 		{
-			processor = new NetworkEvents(zmqcontext);
+			processor = new NetworkEvents();
 			std::cout << "Creating a new signal generator." << std::endl;
 		}
 
 
 
-        sendActionMessage("New source node created.");
+		CoreServices::sendStatusMessage("New source node created.");
 
 
     }
@@ -581,6 +572,11 @@ GenericProcessor* ProcessorGraph::createProcessorFromDescription(String& descrip
             std::cout << "Creating a new filter." << std::endl;
             processor = new FilterNode();
 
+        }
+        else if (subProcessorType.equalsIgnoreCase("Rectifier"))
+        {
+            std::cout << "Creating a new rectifier node." << std::endl;
+            processor = new Rectifier();
         }
         else if (subProcessorType.equalsIgnoreCase("Spike Detector"))
         {
@@ -612,7 +608,7 @@ GenericProcessor* ProcessorGraph::createProcessorFromDescription(String& descrip
             std::cout << "Creating a new common average reference node." << std::endl;
             processor = new CAR();
         }
-        sendActionMessage("New filter node created.");
+		CoreServices::sendStatusMessage("New filter node created.");
 
     }
     else if (processorType.equalsIgnoreCase("Utilities"))
@@ -624,7 +620,7 @@ GenericProcessor* ProcessorGraph::createProcessorFromDescription(String& descrip
             std::cout << "Creating a new splitter." << std::endl;
             processor = new Splitter();
 
-            sendActionMessage("New splitter created.");
+			CoreServices::sendStatusMessage("New splitter created.");
 
         }
         else if (subProcessorType.equalsIgnoreCase("Merger"))
@@ -633,7 +629,7 @@ GenericProcessor* ProcessorGraph::createProcessorFromDescription(String& descrip
             std::cout << "Creating a new merger." << std::endl;
             processor = new Merger();
 
-            sendActionMessage("New merger created.");
+			CoreServices::sendStatusMessage("New merger created.");
 
         }
         else if (subProcessorType.equalsIgnoreCase("Record Control"))
@@ -642,7 +638,7 @@ GenericProcessor* ProcessorGraph::createProcessorFromDescription(String& descrip
             std::cout << "Creating a new record controller." << std::endl;
             processor = new RecordControl();
 
-            sendActionMessage("New record controller created.");
+			CoreServices::sendStatusMessage("New record controller created.");
 
         }
 
@@ -677,8 +673,13 @@ GenericProcessor* ProcessorGraph::createProcessorFromDescription(String& descrip
 			std::cout << "Creating a PSTH output node." << std::endl;
 			processor = new PeriStimulusTimeHistogramNode();
 		}
+        else if (subProcessorType.equalsIgnoreCase("Event Broadcaster"))
+        {
+            std::cout << "Creating an Event Broadcaster output node." << std::endl;
+            processor = new EventBroadcaster();
+        }
 
-        sendActionMessage("New sink created.");
+		CoreServices::sendStatusMessage("New sink created.");
     }
 
     return processor;
@@ -723,11 +724,15 @@ void ProcessorGraph::removeProcessor(GenericProcessor* processor)
         //Look for the next source node. If none is found, set the sourceid to 0
         for (int i = 0; i < getNumNodes() && newId == 0; i++)
         {
-            GenericProcessor* p = static_cast<GenericProcessor*>(getNode(i)->getProcessor());
-			if (p->isSource() && p->generatesTimestamps())
-            {
-                newId = p->nodeId;
-            }
+			if (getNode(i)->nodeId != OUTPUT_NODE_ID)
+			{
+				GenericProcessor* p = dynamic_cast<GenericProcessor*>(getNode(i)->getProcessor());
+				//GenericProcessor* p = static_cast<GenericProcessor*>(getNode(i)->getProcessor());
+				if (p && p->isSource() && p->generatesTimestamps())
+				{
+					newId = p->nodeId;
+				}
+			}
         }
         getMessageCenter()->setSourceNodeId(newId);
     }
@@ -737,7 +742,7 @@ void ProcessorGraph::removeProcessor(GenericProcessor* processor)
 bool ProcessorGraph::enableProcessors()
 {
 
-    updateConnections(getEditorViewport()->requestSignalChain());
+    updateConnections(AccessClass::getEditorViewport()->requestSignalChain());
 
     std::cout << "Enabling processors..." << std::endl;
 
@@ -745,7 +750,7 @@ bool ProcessorGraph::enableProcessors()
 
     if (getNumNodes() < 5)
     {
-        getUIComponent()->disableCallbacks();
+        AccessClass::getUIComponent()->disableCallbacks();
         return false;
     }
 
@@ -763,7 +768,7 @@ bool ProcessorGraph::enableProcessors()
             {
                 std::cout << p->getName() << " said it's not OK." << std::endl;
                 //	sendActionMessage("Could not initialize acquisition.");
-                getUIComponent()->disableCallbacks();
+                AccessClass::getUIComponent()->disableCallbacks();
                 return false;
 
             }
@@ -783,7 +788,7 @@ bool ProcessorGraph::enableProcessors()
         }
     }
 
-    getEditorViewport()->signalChainCanBeEdited(false);
+    AccessClass::getEditorViewport()->signalChainCanBeEdited(false);
 
     //	sendActionMessage("Acquisition started.");
 
@@ -816,7 +821,7 @@ bool ProcessorGraph::disableProcessors()
         }
     }
 
-    getEditorViewport()->signalChainCanBeEdited(true);
+    AccessClass::getEditorViewport()->signalChainCanBeEdited(true);
 
     //	sendActionMessage("Acquisition ended.");
 

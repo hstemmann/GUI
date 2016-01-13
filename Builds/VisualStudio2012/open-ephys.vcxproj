@@ -89,7 +89,7 @@
       <Optimization>Disabled</Optimization>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <AdditionalIncludeDirectories>..\..\JuceLibraryCode;..\..\JuceLibraryCode\modules;../../Resources/windows-libs/HDF5/include;../../Resources/windows-libs/ZeroMQ/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;DEBUG;_DEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.4;JUCE_APP_VERSION_HEX=0x304;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;DEBUG;_DEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.6;JUCE_APP_VERSION_HEX=0x306;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader/>
@@ -135,7 +135,7 @@
     <ClCompile>
       <Optimization>Full</Optimization>
       <AdditionalIncludeDirectories>..\..\JuceLibraryCode;..\..\JuceLibraryCode\modules;../../Resources/windows-libs/HDF5/include;../../Resources/windows-libs/ZeroMQ/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.4;JUCE_APP_VERSION_HEX=0x304;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.6;JUCE_APP_VERSION_HEX=0x306;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader/>
@@ -183,7 +183,7 @@
       <Optimization>Disabled</Optimization>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>..\..\JuceLibraryCode;..\..\JuceLibraryCode\modules;../../Resources/windows-libs/HDF5/include;../../Resources/windows-libs/ZeroMQ/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;DEBUG;_DEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.4;JUCE_APP_VERSION_HEX=0x304;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;DEBUG;_DEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.6;JUCE_APP_VERSION_HEX=0x306;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader/>
@@ -227,7 +227,7 @@
     <ClCompile>
       <Optimization>Full</Optimization>
       <AdditionalIncludeDirectories>..\..\JuceLibraryCode;..\..\JuceLibraryCode\modules;../../Resources/windows-libs/HDF5/include;../../Resources/windows-libs/ZeroMQ/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.4;JUCE_APP_VERSION_HEX=0x304;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;NOMINMAX;ZEROMQ;JUCER_VS2012_78A501F=1;JUCE_APP_VERSION=0.3.6;JUCE_APP_VERSION_HEX=0x306;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader/>
@@ -263,9 +263,11 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Source\CoreServices.cpp"/>
     <ClCompile Include="..\..\Source\AccessClass.cpp"/>
     <ClCompile Include="..\..\Source\Network\PracticalSocket.cpp"/>
     <ClCompile Include="..\..\Source\Audio\AudioComponent.cpp"/>
+    <ClCompile Include="..\..\Source\Processors\Rectifier\Rectifier.cpp"/>
     <ClCompile Include="..\..\Source\Processors\ArduinoOutput\ArduinoOutput.cpp"/>
     <ClCompile Include="..\..\Source\Processors\ArduinoOutput\ArduinoOutputEditor.cpp"/>
     <ClCompile Include="..\..\Source\Processors\AudioNode\AudioEditor.cpp"/>
@@ -307,7 +309,8 @@
     <ClCompile Include="..\..\Source\Processors\Editors\ImageIcon.cpp"/>
     <ClCompile Include="..\..\Source\Processors\Editors\VisualizerEditor.cpp"/>
     <ClCompile Include="..\..\Source\Processors\Editors\NetworkEventsEditor.cpp"/>
-    <ClCompile Include="..\..\Source\Processors\Editors\PeriStimulusTimeHistogramEditor.cpp"/>
+    <ClCompile Include="..\..\Source\Processors\EventBroadcaster\EventBroadcaster.cpp"/>
+    <ClCompile Include="..\..\Source\Processors\EventBroadcaster\EventBroadcasterEditor.cpp"/>
     <ClCompile Include="..\..\Source\Processors\EventDetector\EventDetector.cpp"/>
     <ClCompile Include="..\..\Source\Processors\EventNode\EventNode.cpp"/>
     <ClCompile Include="..\..\Source\Processors\EventNode\EventNodeEditor.cpp"/>
@@ -341,6 +344,7 @@
     <ClCompile Include="..\..\Source\Processors\RecordNode\RecordEngine.cpp"/>
     <ClCompile Include="..\..\Source\Processors\RecordNode\RecordNode.cpp"/>
     <ClCompile Include="..\..\Source\Processors\NetworkEvents\NetworkEvents.cpp"/>
+    <ClCompile Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramEditor.cpp"/>
     <ClCompile Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramNode.cpp"/>
     <ClCompile Include="..\..\Source\Processors\PSTH\tictoc.cpp"/>
     <ClCompile Include="..\..\Source\Processors\PSTH\TrialCircularBuffer.cpp"/>
@@ -366,6 +370,7 @@
     <ClCompile Include="..\..\Source\Processors\SpikeSorter\SpikeSorterEditor.cpp"/>
     <ClCompile Include="..\..\Source\Processors\Splitter\Splitter.cpp"/>
     <ClCompile Include="..\..\Source\Processors\Splitter\SplitterEditor.cpp"/>
+    <ClCompile Include="..\..\Source\Processors\Visualization\Visualizer.cpp"/>
     <ClCompile Include="..\..\Source\Processors\Visualization\DataWindow.cpp"/>
     <ClCompile Include="..\..\Source\Processors\Visualization\SpikeObject.cpp"/>
     <ClCompile Include="..\..\Source\Processors\Visualization\MatlabLikePlot.cpp"/>
@@ -1507,9 +1512,11 @@
     <ClCompile Include="..\..\JuceLibraryCode\modules\juce_video\juce_video.cpp"/>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Source\CoreServices.h"/>
     <ClInclude Include="..\..\Source\AccessClass.h"/>
     <ClInclude Include="..\..\Source\Network\PracticalSocket.h"/>
     <ClInclude Include="..\..\Source\Audio\AudioComponent.h"/>
+    <ClInclude Include="..\..\Source\Processors\Rectifier\Rectifier.h"/>
     <ClInclude Include="..\..\Source\Processors\ArduinoOutput\ArduinoOutput.h"/>
     <ClInclude Include="..\..\Source\Processors\ArduinoOutput\ArduinoOutputEditor.h"/>
     <ClInclude Include="..\..\Source\Processors\AudioNode\AudioEditor.h"/>
@@ -1557,7 +1564,8 @@
     <ClInclude Include="..\..\Source\Processors\Editors\ImageIcon.h"/>
     <ClInclude Include="..\..\Source\Processors\Editors\VisualizerEditor.h"/>
     <ClInclude Include="..\..\Source\Processors\Editors\NetworkEventsEditor.h"/>
-    <ClInclude Include="..\..\Source\Processors\Editors\PeriStimulusTimeHistogramEditor.h"/>
+    <ClInclude Include="..\..\Source\Processors\EventBroadcaster\EventBroadcaster.h"/>
+    <ClInclude Include="..\..\Source\Processors\EventBroadcaster\EventBroadcasterEditor.h"/>
     <ClInclude Include="..\..\Source\Processors\EventDetector\EventDetector.h"/>
     <ClInclude Include="..\..\Source\Processors\EventNode\EventNode.h"/>
     <ClInclude Include="..\..\Source\Processors\EventNode\EventNodeEditor.h"/>
@@ -1591,6 +1599,7 @@
     <ClInclude Include="..\..\Source\Processors\RecordNode\RecordEngine.h"/>
     <ClInclude Include="..\..\Source\Processors\RecordNode\RecordNode.h"/>
     <ClInclude Include="..\..\Source\Processors\NetworkEvents\NetworkEvents.h"/>
+    <ClInclude Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramEditor.h"/>
     <ClInclude Include="..\..\Source\Processors\PSTH\PeriStimulusTimeHistogramNode.h"/>
     <ClInclude Include="..\..\Source\Processors\PSTH\tictoc.h"/>
     <ClInclude Include="..\..\Source\Processors\PSTH\TrialCircularBuffer.h"/>

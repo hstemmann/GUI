@@ -69,4 +69,75 @@ DataBuffer* DataThread::getBufferAddress()
     return dataBuffer;
 }
 
+void DataThread::getChannelInfo(Array<ChannelCustomInfo>& infoArray)
+{
+    infoArray.clear();
+    infoArray.addArray(channelInfo);
+}
 
+
+void DataThread::updateChannels()
+{
+    if (usesCustomNames())
+    {
+        channelInfo.resize(sn->channels.size());
+        setDefaultChannelNames();
+        for (int i = 0; i < channelInfo.size(); i++)
+        {
+            sn->channels[i]->setName(channelInfo[i].name);
+            sn->channels[i]->bitVolts = channelInfo[i].gain;
+        }
+    }
+}
+
+void DataThread::setOutputHigh() {}
+
+void DataThread::setOutputLow() {}
+
+int DataThread::getNumAuxOutputs()
+{
+	return 0;
+}
+
+int DataThread::getNumAdcOutputs()
+{
+	return 0;
+}
+
+int DataThread::getNumEventChannels()
+{
+	return 0;
+}
+
+bool DataThread::isReady()
+{
+	return true;
+}
+
+int DataThread::modifyChannelName(int channel, String newName)
+{
+	return -1;
+}
+
+int DataThread::modifyChannelGain(int channel, float gain)
+{
+	return -1;
+}
+
+void DataThread::getEventChannelNames(StringArray& names)
+{
+}
+
+bool DataThread::usesCustomNames()
+{
+	return false;
+}
+
+void* DataThread::getDevice()
+{
+	return 0;
+}
+
+void DataThread::setDefaultChannelNames()
+{
+}

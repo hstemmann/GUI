@@ -24,7 +24,7 @@
 #include "Channel.h"
 
 
-Channel::Channel(GenericProcessor* p, int n, ChannelType t) : index(n), processor(p), type(t), nodeIndex(0)
+Channel::Channel(GenericProcessor* p, int n, ChannelType t) : nodeIndex(0), index(n), mappedIndex(0), processor(p), type(t)
 {
     reset();
 }
@@ -54,6 +54,7 @@ Channel::Channel(const Channel& ch)
 {
     index = ch.index;
     nodeIndex = ch.nodeIndex;
+	mappedIndex = ch.mappedIndex;
     nodeId = ch.nodeId;
     processor = ch.processor;
     sampleRate = ch.sampleRate;
@@ -69,6 +70,7 @@ Channel::Channel(const Channel& ch)
     y = ch.y;
     z = ch.z;
     impedance = ch.impedance;
+	extraData = ch.extraData;
 
     setRecordState(false);
 }
@@ -137,18 +139,26 @@ void Channel::createDefaultName()
         case EVENT_CHANNEL:
             name = String("EVENT");
             break;
-        case SINGLE_ELECTRODE:
-            name = String("SE");
-            break;
-        case STEREOTRODE:
-            name = String("ST");
-            break;
-        case TETRODE:
-            name = String("TT");
+        case ELECTRODE_CHANNEL:
+            name = String("ELEC");
             break;
         case MESSAGE_CHANNEL:
             name = String("MSG");
     }
 
     name += index;
+}
+
+bool Channel::getRecordState()
+{
+	return isRecording;
+}
+
+ChannelExtraData::ChannelExtraData(void* ptr, int size)
+	: dataPtr(ptr), dataSize(size)
+{
+}
+
+ChannelExtraData::~ChannelExtraData()
+{
 }

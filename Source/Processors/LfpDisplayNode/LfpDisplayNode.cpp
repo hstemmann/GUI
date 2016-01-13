@@ -33,7 +33,7 @@ LfpDisplayNode::LfpDisplayNode()
     //std::cout << " LFPDisplayNodeConstructor" << std::endl;
     displayBuffer = new AudioSampleBuffer(8, 100);
 
-    arrayOfOnes = new float[5000];
+	arrayOfOnes.malloc(5000);
 
     for (int n = 0; n < 5000; n++)
     {
@@ -155,7 +155,7 @@ void LfpDisplayNode::handleEvent(int eventType, MidiMessage& event, int sampleNu
     {
         const uint8* dataptr = event.getRawData();
 
-        int eventNodeId = *(dataptr+1);
+        //int eventNodeId = *(dataptr+1);
         int eventId = *(dataptr+2);
         int eventChannel = *(dataptr+3);
         int eventTime = event.getTimeStamp();
@@ -170,7 +170,11 @@ void LfpDisplayNode::handleEvent(int eventType, MidiMessage& event, int sampleNu
         //	          << eventChannel << ", with ID " << eventId << ", copying to "
          //            << channelForEventSource[eventSourceNode] << std::endl;
         ////
-        int bufferIndex = (displayBufferIndex[channelForEventSource[eventSourceNodeId]] + eventTime) % displayBuffer->getNumSamples();
+        int bufferIndex = (displayBufferIndex[channelForEventSource[eventSourceNodeId]] + eventTime - nSamples) % displayBuffer->getNumSamples();
+        
+        bufferIndex = bufferIndex >= 0 ? bufferIndex :
+        displayBuffer->getNumSamples() + bufferIndex;
+
 
         if (eventId == 1)
         {
@@ -239,7 +243,7 @@ void LfpDisplayNode::initializeEventChannels()
     {
 
         int chan = channelForEventSource[eventSourceNodes[i]];
-        int index = displayBufferIndex[15]; //displayBufferIndex[chan];
+        int index = displayBufferIndex[chan];
 
         //std::cout << "Event source node " << i << ", channel " << chan << std::endl;
 
@@ -296,6 +300,8 @@ void LfpDisplayNode::process(AudioSampleBuffer& buffer, MidiBuffer& events)
     initializeEventChannels();
 
     checkForEvents(events); // see if we got any TTL events
+
+	ScopedLock displayLock(displayMutex);
 
     for (int chan = 0; chan < buffer.getNumChannels(); chan++)
     {

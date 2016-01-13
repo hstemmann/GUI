@@ -26,6 +26,7 @@
 #include <stdio.h>
 
 #include "UIComponent.h"
+#include "../AccessClass.h"
 
 enum colorIds
 {
@@ -76,6 +77,7 @@ ProcessorList::ProcessorList()
     //filters->addSubItem(new ProcessorListItem("Digital Ref"));
     filters->addSubItem(new ProcessorListItem("Channel Map"));
     filters->addSubItem(new ProcessorListItem("Common Avg Ref"));
+    filters->addSubItem(new ProcessorListItem("Rectifier"));
     //filters->addSubItem(new ProcessorListItem("Eye Tracking"));
 
 
@@ -89,6 +91,9 @@ ProcessorList::ProcessorList()
     sinks->addSubItem(new ProcessorListItem("Arduino Output"));
     // sinks->addSubItem(new ProcessorListItem("FPGA Output"));
     sinks->addSubItem(new ProcessorListItem("Pulse Pal"));
+#ifdef ZEROMQ
+    sinks->addSubItem(new ProcessorListItem("Event Broadcaster"));
+#endif
 
     ProcessorListItem* utilities = new ProcessorListItem("Utilities");
     utilities->addSubItem(new ProcessorListItem("Splitter"));
@@ -372,7 +377,7 @@ void ProcessorList::toggleState()
 {
     ProcessorListItem* fli = getListItemForYPos(0);
     fli->reverseOpenState();
-    getUIComponent()->childComponentChanged();
+    AccessClass::getUIComponent()->childComponentChanged();
     repaint();
 }
 
@@ -442,7 +447,7 @@ void ProcessorList::mouseDown(const MouseEvent& e)
                 colourSelector.setName("background");
                 colourSelector.setCurrentColour(findColour(currentColor));
                 colourSelector.addChangeListener(this);
-                colourSelector.addChangeListener(getProcessorGraph());
+                colourSelector.addChangeListener(AccessClass::getProcessorGraph());
                 colourSelector.setColour(ColourSelector::backgroundColourId, Colours::transparentBlack);
                 colourSelector.setSize(300, 275);
 
@@ -465,11 +470,11 @@ void ProcessorList::mouseDown(const MouseEvent& e)
         {
             if (listItem->isOpen())
             {
-                getUIComponent()->childComponentChanged();
+                AccessClass::getUIComponent()->childComponentChanged();
             }
             else
             {
-                getUIComponent()->childComponentChanged();
+                AccessClass::getUIComponent()->childComponentChanged();
                 // totalHeight = itemHeight + 2*yBuffer;
             }
 
@@ -604,7 +609,7 @@ void ProcessorList::loadStateFromXml(XmlElement* xml)
 
     repaint();
 
-    getProcessorGraph()->refreshColors();
+    AccessClass::getProcessorGraph()->refreshColors();
 }
 
 Array<Colour> ProcessorList::getColours()

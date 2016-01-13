@@ -25,6 +25,7 @@
 #include "../ProcessorGraph/ProcessorGraph.h"
 #include "../../UI/EditorViewport.h"
 #include "../../UI/ControlPanel.h"
+#include "../../AccessClass.h"
 #include "RecordEngine.h"
 
 #define EVERY_ENGINE for(int eng = 0; eng < engineArray.size(); eng++) engineArray[eng]
@@ -55,6 +56,7 @@ RecordNode::RecordNode()
 
     experimentNumber = 0;
     hasRecorded = false;
+    settingsNeeded = false;
 
     // 128 inputs, 0 outputs
     setPlayConfigDetails(getNumInputs(),getNumOutputs(),44100.0,128);
@@ -155,7 +157,7 @@ void RecordNode::getChannelNamesAndRecordingStatus(StringArray& names, Array<boo
 void RecordNode::addInputChannel(GenericProcessor* sourceNode, int chan)
 {
 
-    if (chan != getProcessorGraph()->midiChannelIndex)
+    if (chan != AccessClass::getProcessorGraph()->midiChannelIndex)
     {
 
         int channelIndex = getNextChannel(false);
@@ -216,7 +218,7 @@ String RecordNode::generateDirectoryName()
     t.add(calendar.getMinutes());
     t.add(calendar.getSeconds());
 
-    String filename = getControlPanel()->getTextToPrepend();
+    String filename = AccessClass::getControlPanel()->getTextToPrepend();
 
     String datestring = "";
 
@@ -233,10 +235,10 @@ String RecordNode::generateDirectoryName()
             datestring += "-";
     }
 
-    getControlPanel()->setDateText(datestring);
+    AccessClass::getControlPanel()->setDateText(datestring);
 
     filename += datestring;
-    filename += getControlPanel()->getTextToAppend();
+    filename += AccessClass::getControlPanel()->getTextToAppend();
 
     return filename;
 
@@ -297,6 +299,7 @@ void RecordNode::setParameter(int parameterIndex, float newValue)
             createNewDirectory();
             recordingNumber = 0;
             experimentNumber = 1;
+            settingsNeeded = true;
             EVERY_ENGINE->directoryChanged();
         }
         else
@@ -307,8 +310,12 @@ void RecordNode::setParameter(int parameterIndex, float newValue)
         if (!rootFolder.exists())
         {
             rootFolder.createDirectory();
-            String settingsFileName = rootFolder.getFullPathName() + File::separator + "settings.xml";
-            getEditorViewport()->saveState(File(settingsFileName));
+        }
+        if (settingsNeeded)
+        {
+            String settingsFileName = rootFolder.getFullPathName() + File::separator + "settings" + ((experimentNumber > 1) ? "_" + String(experimentNumber) : String::empty) + ".xml";
+            AccessClass::getEditorViewport()->saveState(File(settingsFileName));
+            settingsNeeded = false;
         }
 
         EVERY_ENGINE->openFiles(rootFolder, experimentNumber, recordingNumber);
@@ -346,7 +353,7 @@ void RecordNode::setParameter(int parameterIndex, float newValue)
             {
                 //Toggling channels while recording isn't allowed. Code shouldn't reach here.
                 //In case it does, display an error and exit.
-                sendActionMessage("Toggling record channels while recording is not allowed");
+                CoreServices::sendStatusMessage("Toggling record channels while recording is not allowed");
                 std::cout << "ERROR: Wrong code section reached\n Toggling record channels while recording is not allowed." << std::endl;
                 return;
             }
@@ -378,6 +385,7 @@ bool RecordNode::enable()
     {
         hasRecorded = false;
         experimentNumber++;
+        settingsNeeded = true;
     }
 
     //When starting a recording, if a new directory is needed it gets rewritten. Else is incremented by one.
@@ -412,9 +420,9 @@ void RecordNode::handleEvent(int eventType, MidiMessage& event, int samplePositi
 {
     if (isRecording && allFilesOpened)
     {
-        if ((eventType == TTL) || (eventType == MESSAGE) || (eventType == NETWORK))
+        if (isWritableEvent(eventType))
         {
-            if (event.getRawData()+4 > 0) // saving flag > 0 (i.e., event has not already been processed)
+            if (*(event.getRawData()+4) > 0) // saving flag > 0 (i.e., event has not already been processed)
             {
                 EVERY_ENGINE->writeEvent(eventType, event, samplePosition);
             }
@@ -425,12 +433,12 @@ void RecordNode::handleEvent(int eventType, MidiMessage& event, int samplePositi
 void RecordNode::process(AudioSampleBuffer& buffer,
                          MidiBuffer& events)
 {
-    // FIRST: cycle through events -- extract the TTLs and the timestamps
+	//update timstamp data even if we're not recording yet
+	EVERY_ENGINE->updateTimestamps(&timestamps);
+	EVERY_ENGINE->updateNumSamples(&numSamples);
+	
+	// FIRST: cycle through events -- extract the TTLs and the timestamps
     checkForEvents(events);
-
-    //update timstamp data even if we're not recording yet
-    EVERY_ENGINE->updateTimestamps(&timestamps);
-    EVERY_ENGINE->updateNumSamples(&numSamples);
 
     if (isRecording && allFilesOpened)
     {

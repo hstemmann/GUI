@@ -75,6 +75,11 @@ public:
         return displayBufferIndex[chan];
     }
 
+	CriticalSection* getMutex()
+	{
+		return &displayMutex;
+	}
+
 private:
 
     void initializeEventChannels();
@@ -94,10 +99,12 @@ private:
 
     int64 bufferTimestamp;
     std::map<int, int> ttlState;
-    float* arrayOfOnes;
+    HeapBlock<float> arrayOfOnes;
     int totalSamples;
 
     bool resizeBuffer();
+
+	CriticalSection displayMutex;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LfpDisplayNode);
 

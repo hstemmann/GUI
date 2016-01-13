@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "OriginalRecording.h"
+#include "../../AccessClass.h"
 #include "../../Audio/AudioComponent.h"
 
 OriginalRecording::OriginalRecording() : separateFiles(false),
@@ -228,13 +229,21 @@ void OriginalRecording::openMessageFile(File rootFolder)
 {
     FILE* mFile;
     String fullPath(rootFolder.getFullPathName() + rootFolder.separatorString);
-    fullPath += "messages.events";
+
+	fullPath += "messages";
+
+	if (experimentNumber > 1)
+	{
+		fullPath += "_" + String(experimentNumber);
+	}
+
+    fullPath += ".events";
 
     std::cout << "OPENING FILE: " << fullPath << std::endl;
 
     File f = File(fullPath);
 
-    bool fileExists = f.exists();
+    //bool fileExists = f.exists();
 
     diskWriteLock.enter();
 
@@ -253,7 +262,10 @@ String OriginalRecording::getFileName(Channel* ch)
 
     filename += ch->nodeId;
     filename += "_";
-    filename += ch->name;
+    if (renameFiles)
+        filename += renamedPrefix + String(ch->mappedIndex + 1);
+    else
+        filename += ch->name;
 
     if (experimentNumber > 1)
     {
@@ -317,7 +329,7 @@ String OriginalRecording::generateHeader(Channel* ch)
     header += BLOCK_LENGTH;
     header += ";\n";
     header += "header.bufferSize = ";
-    header += getAudioComponent()->getBufferSize();
+    header += AccessClass::getAudioComponent()->getBufferSize();
     header += ";\n";
     header += "header.bitVolts = ";
     header += (ch != nullptr) ? String(ch->bitVolts) : "1";
@@ -339,7 +351,9 @@ String OriginalRecording::generateSpikeHeader(SpikeRecordInfo* elec)
     header += String(HEADER_SIZE);
     header += ";\n";
 
-    header += "header.description = 'Each record contains 1 uint8 eventType, 1 int64 timestamp, 1 uint16 electrodeID, 1 uint16 numChannels (n), 1 uint16 numSamples (m), n*m uint16 samples, n uint16 channelGains, n uint16 thresholds, and 1 uint16 recordingNumber'; \n";
+    header += "header.description = 'Each record contains 1 uint8 eventType, 1 int64 timestamp, 1 int64 software timestamp, "
+              "1 uint16 sourceID, 1 uint16 numChannels (n), 1 uint16 numSamples (m), 1 uint16 sortedID, 1 uint16 electrodeID, "
+              "1 uint16 channel, 3 uint8 color codes, 2 float32 component projections, n*m uint16 samples, n float32 channelGains, n uint16 thresholds, and 1 uint16 recordingNumber'; \n";
 
     header += "header.date_created = '";
     header += generateDateString();
@@ -366,9 +380,9 @@ String OriginalRecording::generateSpikeHeader(SpikeRecordInfo* elec)
 
 void OriginalRecording::writeEvent(int eventType, MidiMessage& event, int samplePosition)
 {
-    if (eventType == GenericProcessor::TTL)
+    if (isWritableEvent(eventType))
         writeTTLEvent(event,samplePosition);
-    else if (eventType == GenericProcessor::MESSAGE || eventType == GenericProcessor::NETWORK)
+    if (eventType == GenericProcessor::MESSAGE)
         writeMessage(event,samplePosition);
 }
 
@@ -698,6 +712,8 @@ void OriginalRecording::writeXml()
 void OriginalRecording::setParameter(EngineParameter& parameter)
 {
     boolParameter(0, separateFiles);
+    boolParameter(1, renameFiles);
+    strParameter(2, renamedPrefix);
 }
 
 RecordEngineManager* OriginalRecording::getEngineManager()
@@ -705,6 +721,10 @@ RecordEngineManager* OriginalRecording::getEngineManager()
     RecordEngineManager* man = new RecordEngineManager("OPENEPHYS","Open Ephys",nullptr);
     EngineParameter* param;
     param = new EngineParameter(EngineParameter::BOOL,0,"Separate Files",false);
+    man->addParameter(param);
+    param = new EngineParameter(EngineParameter::BOOL, 1, "Rename files based on channel order", false);
+    man->addParameter(param);
+    param = new EngineParameter(EngineParameter::STR, 2, "Renamed files prefix", "CH");
     man->addParameter(param);
     return man;
 }

@@ -60,24 +60,12 @@ void SpikeDisplayNode::updateSettings()
     {
         ChannelType type = eventChannels[i]->getType();
 
-        if (type == SINGLE_ELECTRODE || type == STEREOTRODE || type == TETRODE)
+        if (type == ELECTRODE_CHANNEL)
         {
 
             Electrode elec;
+			elec.numChannels = static_cast<SpikeChannel*>(eventChannels[i]->extraData.get())->numChannels;
 
-            switch (type)
-            {
-                case SINGLE_ELECTRODE:
-                    elec.numChannels = 1;
-                    break;
-                case STEREOTRODE:
-                    elec.numChannels = 2;
-                    break;
-                case TETRODE:
-                    elec.numChannels = 4;
-                    break;
-            }
-            
             elec.name = eventChannels[i]->getName();
             elec.currentSpikeIndex = 0;
             elec.mostRecentSpikes.ensureStorageAllocated(displayBufferSize);
@@ -105,7 +93,7 @@ bool SpikeDisplayNode::enable()
     std::cout << "SpikeDisplayNode::enable()" << std::endl;
     SpikeDisplayEditor* editor = (SpikeDisplayEditor*) getEditor();
 
-	getProcessorGraph()->getRecordNode()->registerSpikeSource(this);
+	CoreServices::RecordNode::registerSpikeSource(this);
 	for (int i = 0; i < electrodes.size(); i ++)
 	{
 		Electrode& elec = electrodes.getReference(i);
@@ -113,7 +101,7 @@ bool SpikeDisplayNode::enable()
 		recElec->name = elec.name;
 		recElec->numChannels = elec.numChannels;
 		recElec->sampleRate = settings.sampleRate;
-		elec.recordIndex = getProcessorGraph()->getRecordNode()->addSpikeElectrode(recElec);
+		elec.recordIndex = CoreServices::RecordNode::addSpikeElectrode(recElec);
 	}
 
     editor->enable();
@@ -298,7 +286,7 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
                     // save spike
                     if (isRecording)
                     {
-						getProcessorGraph()->getRecordNode()->writeSpike(newSpike,e.recordIndex);
+						CoreServices::RecordNode::writeSpike(newSpike,e.recordIndex);
                     }
                 }
 

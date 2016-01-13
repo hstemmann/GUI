@@ -47,8 +47,8 @@ public:
     ~PeriStimulusTimeHistogramNode();
 
     AudioProcessorEditor* createEditor();
-	
-	void toggleConditionVisibility(int cond);
+
+    void toggleConditionVisibility(int cond);
 
     bool isSink()
     {
@@ -59,7 +59,7 @@ public:
 
     void syncInternalDataStructuresWithSpikeSorter();
 
-	void allocateTrialCircularBuffer();
+    void allocateTrialCircularBuffer();
     void handleEvent(int, MidiMessage&, int);
 
     void updateSettings();
@@ -73,44 +73,35 @@ public:
 
     void addSpikePlotForElectrode(SpikePlot* sp, int i);
     void removeSpikePlots();
-	void reallocate(int numChannels);
-	void stopRecording();
-	void startRecording();
-	void saveCustomParametersToXml(XmlElement* parentElement);
-	void loadCustomParametersFromXml();
-	void modifyTimeRange(double preSec_, double postSec_);
+    void reallocate(int numChannels);
+    void stopRecording();
+    void startRecording();
+    void saveCustomParametersToXml(XmlElement* parentElement);
+    void loadCustomParametersFromXml();
+    void modifyTimeRange(double preSec_, double postSec_);
 
-	TrialCircularBuffer *trialCircularBuffer;
-	bool saveTTLs, saveNetworkEvents,saveEyeTracking ;
-	int spikeSavingMode;
-	bool saveNetworkEventsWhenNotRecording;
+    ScopedPointer<TrialCircularBuffer> trialCircularBuffer;
+    bool saveTTLs, saveNetworkEvents,saveEyeTracking ;
+    int spikeSavingMode;
+    bool saveNetworkEventsWhenNotRecording;
 
     void setHardwareTriggerAlignmentChannel(int chan);
-	
-	void handleNetworkMessage(StringTS s);
+
+    void handleNetworkMessage(StringTS s);
 private:
 
-	FILE* eventFile;
-	String generateHeader();
-	void openFile(String filename);
-
-	void dumpNetworkEventToDisk(String S, int64 ts);
-	void dumpSpikeEventToDisk(SpikeObject *s,  bool dumpWave);
-	void dumpTimestampEventToDisk(int64 softwareTS,int64 hardwareTS);
-	void dumpTTLeventToDisk(int channel,bool risingEdge, int64 ttl_timestamp_software, int64 ttl_timestamp_hardware, int samplePosition );
-	void dumpStartStopRecordEventToDisk(int64 ts, bool startRecord);
-//	void dumpEyeTrackingEventToDisk(EyePosition pos);
-
-	bool isRecording;
+    bool isRecording;
     int displayBufferSize;
     bool redrawRequested;
-	int syncCounter;
-	int64 hardware_timestamp, software_timestamp;
+    int syncCounter;
+    int64 hardware_timestamp, software_timestamp;
 
-	std::queue<StringTS> networkEventsHistory;
-    RecordNode* recordNode;
-    uint16 recordingNumber;
+    std::queue<StringTS> networkEventsHistory;
+    //    uint16 recordingNumber;
     CriticalSection diskWriteLock;
+    Array<Channel*> electrodeChannels;
+
+    Time timer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PeriStimulusTimeHistogramNode);
 

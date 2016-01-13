@@ -275,7 +275,6 @@ class UtilityButton;
 class ControlPanel : public Component,
     public Button::Listener,
     public Timer,
-    public AccessClass,
     public Label::Listener,
     public ComboBox::Listener
 
@@ -289,10 +288,10 @@ public:
     void disableCallbacks();
 
     /** Returns a pointer to the AudioEditor.*/
-    AccessClass* getAudioEditor()
-    {
-        return (AccessClass*) audioEditor;
-    }
+    /*  AccessClass* getAudioEditor()
+      {
+          return (AccessClass*) audioEditor;
+      }*/
 
     /** Sets whether or not the FilenameComponent is visible.*/
     void openState(bool isOpen);
@@ -302,6 +301,19 @@ public:
 
     /** Used to manually turn recording on and off.*/
     void setRecordState(bool isRecording);
+
+    /** Return current recording state.*/
+    bool getRecordingState();
+
+    /** Set recording directory and update FilenameComponent */
+    void setRecordingDirectory(String path);
+
+    /** Return current acquisition state.*/
+    bool getAcquisitionState();
+
+    /** Used to manually turn recording on and off.*/
+    void setAcquisitionState(bool state);
+
     /** Returns a boolean that indicates whether or not the FilenameComponet
         is visible. */
     bool isOpen()
@@ -317,6 +329,12 @@ public:
 
     /** Used by RecordNode to set the filename. */
     String getTextToAppend();
+
+    /** Manually set the text to be prepended to the recording directory */
+    void setPrependText(String text);
+
+    /** Manually set the text to be appended to the recording directory */
+    void setAppendText(String text);
 
     /** Set date text. */
     void setDateText(String);
@@ -340,6 +358,10 @@ public:
 
     /** Sets the list of recently used directories for saving data. */
     void setRecentlyUsedFilenames(const StringArray& filenames);
+
+    /** Adds the RecordNode as a listener of the FilenameComponent
+    (so it knows when the data directory has changed).*/
+    void updateChildComponents();
 
     ScopedPointer<RecordButton> recordButton;
 private:
@@ -371,10 +393,6 @@ private:
     void comboBoxChanged(ComboBox* combo);
 
     bool initialize;
-
-    /** Adds the RecordNode as a listener of the FilenameComponent
-    (so it knows when the data directory has changed).*/
-    void updateChildComponents();
 
     void timerCallback();
 
